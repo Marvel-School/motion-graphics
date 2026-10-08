@@ -23,7 +23,8 @@ export function fromFile(file, family, weights, dir) {
 export function fromFontsource(family, weights, dir) {
   const pkg = `@fontsource/${slug(family)}`;
   const pkgDir = path.join(ROOT, 'node_modules', pkg);
-  if (!fs.existsSync(pkgDir)) {
+  // A package without files/ is a half-finished install (two installs at once); install again.
+  if (!fs.existsSync(path.join(pkgDir, 'files'))) {
     const r = spawnSync('npm', ['install', '--no-save', '--silent', pkg], { cwd: ROOT, encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`"${family}" is not on npm as ${pkg}. Ask the user for the font file and use --file.`);
   }

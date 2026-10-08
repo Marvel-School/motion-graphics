@@ -103,6 +103,21 @@ test('batch stops and names the row when a row lacks a field the defaults have',
   assert.match(r.out, /row 2.*role/);
 });
 
+// Bug caught: sizes read in JS at script start come from the browser's default viewport, not the clip's.
+test('the viewport is the clip size while the clip script runs', () => {
+  const dir = tmpdir();
+  const clip = writeClip(dir, {
+    spec: { width: 640, height: 360, fps: 25, duration: 0.04, alpha: true },
+    css: '#b{position:absolute;top:100px;width:80px;height:80px;background:#fff}',
+    body: '<div id="b"></div>',
+    script: "document.getElementById('b').style.left = (innerWidth - 100) + 'px';",
+  });
+  const out = path.join(dir, 'out.mov');
+  const r = run('render.mjs', [clip, '--out', out]);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(alphaRange(out).max, 1, 'box placed from innerWidth must be on frame');
+});
+
 // Bug caught: a preview of a transparent clip comes out black-on-black and unreadable in chat.
 test('preview is half-size H.264 with transparency shown on a checkerboard', () => {
   const dir = tmpdir();

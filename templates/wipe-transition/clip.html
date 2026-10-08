@@ -1,0 +1,55 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* brand */
+:root{--brand:"";--bg:#111;--fg:#fff;--primary:#555;--accent:#aaa;--font-display:sans-serif;--font-body:sans-serif;--logo-src:""}
+/* /brand */
+html,body{margin:0;overflow:hidden;background:transparent}
+/* Wipe transition: three skewed panels sweep left to right; the bg panel covers the whole frame at the cut. */
+.panel{position:absolute;inset:0}
+#p1{background:var(--primary)}
+#p2{background:var(--accent)}
+#p3{background:var(--bg)}
+</style></head>
+<body>
+<div class="panel" id="p1"></div>
+<div class="panel" id="p2"></div>
+<div class="panel" id="p3"></div>
+<script>
+const CUT = 0.6;   // seconds; the bg panel covers the frame here
+const DATA = MG.clip(
+  { width: 1920, height: 1080, fps: 25, duration: 1.2, alpha: true },
+  {}
+);
+window.CLIP.cut = CUT;
+const { prog, lerp } = MG;
+const W = CLIP.width, H = CLIP.height;
+const LEAN = H * Math.tan(12 * Math.PI / 180);   // horizontal offset between top and bottom of an edge
+const inOutQuart = p => (p < 0.5 ? 8 * p ** 4 : 1 - Math.pow(-2 * p + 2, 4) / 2);
+
+// Each panel is a parallelogram between a trailing and a leading edge. Edges travel from just
+// off the left to just off the right, measured at mid height.
+// Entrance: primary leads, accent, then bg. Exit: bg leaves first, primary last.
+const IN = 0.4, OUT = 0.3, STAGGER = 0.06;
+const panels = [
+  { el: document.getElementById('p1'), order: 0 },
+  { el: document.getElementById('p2'), order: 1 },
+  { el: document.getElementById('p3'), order: 2 },
+];
+const PAD = 0.02 * W;   // edges park this far past the frame, so no anti-aliased edge pixel lands inside it
+const edge = (t, t0, d) => lerp(-LEAN / 2 - PAD, W + LEAN / 2 + PAD, inOutQuart(prog(t, t0, d)));
+
+window.seek = t => {
+  for (const { el, order } of panels) {
+    // bg (order 2) finishes entering 0.02s before the cut and starts leaving 0.02s after it.
+    const inStart = CUT - 0.02 - IN - (2 - order) * STAGGER;
+    const outStart = CUT + 0.02 + (2 - order) * STAGGER;
+    const lead = edge(t, inStart, IN);
+    const trail = edge(t, outStart, OUT);
+    const s = LEAN / 2;
+    el.style.clipPath = lead - trail < 1 ? 'polygon(0 0,0 0,0 0)'
+      : `polygon(${trail + s}px 0,${lead + s}px 0,${lead - s}px ${H}px,${trail - s}px ${H}px)`;
+  }
+};
+</script>
+</body></html>

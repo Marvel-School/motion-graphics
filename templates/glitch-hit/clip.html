@@ -1,0 +1,90 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* brand */
+:root{--brand:"";--bg:#111;--fg:#fff;--primary:#555;--accent:#aaa;--font-display:sans-serif;--font-body:sans-serif;--logo-src:""}
+/* /brand */
+html,body{margin:0;overflow:hidden;background:transparent}
+/* Glitch hit: brand-colored slices, scanline bands and offset copies, hit hard and decaying. Drop on a cut or a beat. */
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const DATA = MG.clip(
+  { width: 1920, height: 1080, fps: 25, duration: 0.8, alpha: true },
+  {}
+);
+const { prog } = MG;
+const W = CLIP.width, H = CLIP.height, VMIN = Math.min(W, H);
+const cv = document.getElementById('c');
+cv.width = W; cv.height = H;
+const g = cv.getContext('2d');
+
+const SLICES = 12, BANDS = 3;   // most candidates drawn at full intensity
+
+// Full at 0.04s, gone by 0.70s, one late flicker around 0.45s.
+function intensity(t) {
+  if (t < 0.04) return 0;
+  const decay = Math.pow(1 - prog(t, 0.04, 0.66), 2);
+  const flicker = t >= 0.43 && t < 0.51 ? 0.75 : 0;
+  return Math.max(decay, flicker);
+}
+
+window.seek = t => {
+  g.clearRect(0, 0, W, H);
+  const I = intensity(t);
+  if (I < 0.02) return;
+  // Colors read here, not at script start, so a batch or brand change always shows.
+  const primary = MG.brandVar('--primary'), accent = MG.brandVar('--accent'), fg = MG.brandVar('--fg');
+  const cols = [primary, primary, accent, fg];
+  // Small epsilon: t * fps can land a hair under the whole frame number.
+  const f = Math.floor(t * CLIP.fps + 1e-6);
+  // Stepped: the pattern changes every 2 frames, which reads as glitch rather than noise.
+  const r = MG.rand('glitch' + (f >> 1));
+
+  // Every candidate draws the same number of random values, so the pattern stays put
+  // while intensity only decides how many of them show.
+  const nSlices = Math.ceil(I * SLICES);
+  for (let i = 0; i < SLICES; i++) {
+    const y = r() * H;
+    const h = VMIN * (0.004 + Math.pow(r(), 2.2) * 0.07);   // mostly thin, a few thick
+    const x = (r() * 1.1 - 0.2) * W;
+    const w = W * (0.08 + r() * 0.42);
+    const ci = Math.floor(r() * cols.length);
+    const dx = (r() - 0.5) * 0.12 * W * I;
+    const split = r() < 0.55;
+    const off = VMIN * (0.015 + r() * 0.025) * (0.5 + I * 0.5);
+    if (i >= nSlices) continue;
+    const X = Math.round(x + dx), Y = Math.round(y), Wd = Math.round(w), Hd = Math.max(2, Math.round(h));
+    if (split) {
+      // RGB-split style copies: the other two brand colors, full size, pushed out on opposite
+      // corners so each shows as a fringe past the main slice drawn on top.
+      const others = [primary, accent, fg].filter(c => c !== cols[ci]);
+      const dy = Math.max(1, Math.round(Hd * 0.3));
+      g.globalAlpha = 0.75;
+      g.fillStyle = others[0]; g.fillRect(Math.round(X - off), Y - dy, Wd, Hd);
+      g.fillStyle = others[1] || others[0]; g.fillRect(Math.round(X + off), Y + dy, Wd, Hd);
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = cols[ci];
+    g.fillRect(X, Y, Wd, Hd);
+  }
+
+  // Scanline bands: thin repeating lines over a strip of the frame.
+  const nBands = Math.ceil(I * BANDS);
+  const pitch = Math.max(3, Math.round(VMIN * 0.0045));
+  for (let i = 0; i < BANDS; i++) {
+    const y = r() * H;
+    const bh = VMIN * (0.03 + r() * 0.07);
+    const x = r() * 0.4 * W;
+    const w = W * (0.35 + r() * 0.65);
+    if (i >= nBands) continue;
+    g.globalAlpha = 0.45 * Math.min(1, I + 0.3);
+    g.fillStyle = fg;
+    for (let ly = Math.round(y); ly < y + bh; ly += pitch) g.fillRect(Math.round(x), ly, Math.round(w), 1);
+  }
+  g.globalAlpha = 1;
+};
+</script>
+</body></html>

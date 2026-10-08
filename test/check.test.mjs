@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { tmpdir, writeClip, run } from './helpers.mjs';
 
 const spec = { width: 640, height: 360, fps: 25, duration: 2, alpha: true };
@@ -85,6 +87,21 @@ test('fails text whose font is not loaded from a file', () => {
   const r = check(clip);
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, /font.*Bebas Neue/);
+});
+
+// Bug caught: a font first used by text that seek() fills in is never loaded, so a valid clip fails
+// and anything measured in seek uses the fallback font's width.
+test('passes a clip whose text and font only appear once seek runs', () => {
+  const dir = tmpdir();
+  fs.copyFileSync(path.join(import.meta.dirname, 'fixtures/inter-latin-700-normal.woff2'), path.join(dir, 'inter.woff2'));
+  const clip = writeClip(dir, {
+    spec,
+    css: '@font-face{font-family:"Inter";font-weight:700;src:url(inter.woff2)}#t{position:absolute;top:150px;left:100px;color:#fff;font:700 40px "Inter"}',
+    body: '<div id="t"></div>',
+    script: "window.seek = t => { document.getElementById('t').textContent = 'Product'; };",
+  });
+  const r = check(clip);
+  assert.equal(r.code, 0, r.out);
 });
 
 // Bug caught: a clip declared transparent paints a background, so the overlay covers the footage.

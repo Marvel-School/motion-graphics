@@ -31,15 +31,25 @@ export async function openClip(browser, file, data = null) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(`window.__MG_DATA__ = ${JSON.stringify(data)};\n${MG_JS}`);
+  // The clip size is only known once its script has run. Load once to read it, then reload at
+  // that size, so anything the script measures at start sees the real viewport.
   await page.goto('file://' + path.resolve(file));
+  const first = await page.evaluate(() => window.CLIP);
+  if (first) {
+    await page.setViewportSize({ width: first.width, height: first.height });
+    errors.length = 0;
+    await page.reload();
+  }
   const clip = await page.evaluate(() => window.CLIP);
   if (!clip) {
     await page.close();
     throw new Error(`${file}: MG.clip() never ran.${errors.length ? ' Page error: ' + errors.join('; ') : ''}`);
   }
   if (errors.length) throw new Error(`${file}: page error: ${errors.join('; ')}`);
-  await page.setViewportSize({ width: clip.width, height: clip.height });
   await page.evaluate(async () => {
+    // Fonts load lazily on first use. Text that seek() fills in later would otherwise be
+    // measured in the fallback font, and the check would see the face as never loaded.
+    await Promise.all([...document.fonts].map(f => f.load().catch(() => {})));
     await document.fonts.ready;
     await Promise.all([...document.images].map(img => img.decode().catch(() => {})));
   });
