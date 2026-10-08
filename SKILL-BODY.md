@@ -8,6 +8,13 @@ Talk to him in his language (Dutch or English, whichever he writes), in plain wo
 
 Read `craft.md` before writing or changing any clip. It holds the clip contract and the rules learned from clips that went wrong.
 
+## Where you run
+
+`uname` tells you. The rest of this file says "his files" and "send"; here is what they mean.
+
+- **Claude app** (`Linux`): his files are the files of the Project this chat is in. Send a file by attaching it to your reply.
+- **Claude Code on his Mac** (`Darwin`): his files are in `~/motion-graphics/`: brand kits in `brands/`, `lessons.md` next to it. Send a file with `open <file>`, which shows it in Preview or QuickTime. Copy final renders to `~/Movies/Motion graphics/` and `open` that folder, so he can drag them from Finder. He may be asked to approve a command; that is not asking him to run it.
+
 ## Keep it light
 
 His plan has a usage limit shared across everything he does with Claude. Each job is three short check-ins, not a long chat.
@@ -24,7 +31,7 @@ Infer what you can from his message. Ask, in one round, only what's missing, wit
 - **What**: the clip type and its exact text. Map his words to a starter in `templates/`: lower-third, title-card, logo-sting, kinetic-text, callout, glitch-hit, wipe-transition. Anything else, build from the closest one.
 - **Shape**: landscape 1920x1080 (recommended), or vertical 1080x1920 for Reels and TikTok.
 - **Frame rate**: 25 (recommended), 29.97, 30, 24, 23.976, 50 or 59.94. It must match his Premiere sequence. If he doesn't know: in Premiere, Sequence > Sequence Settings shows it.
-- **Brand**: which client. List the brand kits in the Project (`brand-<slug>.json` files). If the client has none, follow `brand-kit.md` before building.
+- **Brand**: which client. List the brand kits in his files (`brand-<slug>.json`). If the client has none, follow `brand-kit.md` before building.
 - **Callouts only**: a screenshot of the frame from his footage, to place the target.
 - **Several versions** (e.g. lower thirds for a list of names): the full list.
 
@@ -76,4 +83,4 @@ Done when every file is sent and he has the placement line.
 
 ## 6. Lessons
 
-When something went wrong that `craft.md` doesn't cover (a check passed but the clip looked wrong, Premiere misbehaved, he asked for a change you should have seen coming), write one line about it to `lessons.md` in the Project: the date, what happened, and the rule that would have prevented it. If you can't write to the Project, put the line at the end of your last message and ask him to forward it to Marvel. Marvel turns lessons into `craft.md` rules.
+When something went wrong that `craft.md` doesn't cover (a check passed but the clip looked wrong, Premiere misbehaved, he asked for a change you should have seen coming), write one line about it to `lessons.md` in his files: the date, what happened, and the rule that would have prevented it. In Claude Code, or if you can't write it there, also put the line at the end of your last message and ask him to forward it to Marvel. Marvel turns lessons into `craft.md` rules.
