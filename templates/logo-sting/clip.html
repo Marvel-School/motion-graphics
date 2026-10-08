@@ -1,0 +1,132 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* brand */
+:root{--brand:"";--bg:#111;--fg:#fff;--primary:#555;--accent:#aaa;--font-display:sans-serif;--font-body:sans-serif;--logo-src:""}
+/* /brand */
+html,body{margin:0;overflow:hidden}
+body{background:var(--bg)}
+/* Logo sting: two bars cut diagonally across the frame, the mark opens out of the cut and settles,
+   the tagline writes on letter by letter. Ends on a hold; the editor cuts. */
+.bar{position:absolute;left:0;top:0;transform-origin:50% 50%}
+#barA{background:var(--accent)}
+#barP{background:var(--primary)}
+.reveal{position:absolute;inset:0}
+.stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mark{transform-origin:50% 50%}
+.word{width:max-content;color:var(--fg);font:400 16vmin/1 var(--font-display);white-space:nowrap;letter-spacing:0.01em}
+.logo{display:block}
+.tag{width:max-content;color:var(--fg);font:400 4.6vmin/1.2 var(--font-body);white-space:pre;margin-top:3.6vmin}
+.tag span{display:inline-block}
+</style></head>
+<body>
+<div class="reveal" id="reveal">
+  <div class="stage" id="markStage"><div class="mark" id="mark"><div class="word" id="word"></div><img class="logo" id="logo" alt=""></div></div>
+</div>
+<div class="bar" id="barA"></div>
+<div class="bar" id="barP"></div>
+<div class="stage" id="tagStage"><div class="tag" id="tag"></div></div>
+<script>
+const DATA = MG.clip(
+  { width: 1920, height: 1080, fps: 25, duration: 4, alpha: false },
+  { wordmark: 'PRODUCTOWNER', tagline: 'Jij bepaalt de richting' }
+);
+const $ = id => document.getElementById(id);
+const { prog, ease, spring } = MG;
+
+// Mark: the logo when the kit has one, else the wordmark. src is set here, before seek,
+// so the page load waits for the image.
+const LOGO = MG.logo();
+if (LOGO) { $('logo').src = LOGO; $('word').remove(); } else { $('logo').remove(); $('word').textContent = DATA.wordmark; }
+
+// Tagline: one span per letter, revealed by index.
+const letters = [...DATA.tagline].map(ch => {
+  const s = document.createElement('span');
+  s.textContent = ch;
+  $('tag').appendChild(s);
+  return s;
+});
+
+const W = CLIP.width, H = CLIP.height, VMIN = Math.min(W, H) / 100;
+const SAFE_W = W * 0.9, SAFE_H = H * 0.9;
+const ANGLE = (W >= H ? -16 : -24) * Math.PI / 180;    // the cut, rising to the right
+const DX = Math.cos(ANGLE), DY = Math.sin(ANGLE);       // along the cut
+const NX = -DY, NY = DX;                                // across the cut
+const LEN = Math.hypot(W, H) * 1.1;                     // bars span the whole frame
+const TH_A = 2.6 * VMIN, TH_P = 1.3 * VMIN;             // bar thickness
+const PEAK = 1.12;                                      // mark scale when the cut opens
+const OPEN = 0.36;                                      // mask starts opening from the cut
+const TAG = 1.4;                                        // tagline starts writing
+
+// Size the mark to fit title-safe, with room for the PEAK scale and the tagline.
+function fitMark() {
+  const tagH = $('tag').offsetHeight + 3.6 * VMIN;
+  const maxW = SAFE_W * 0.82 / PEAK, maxH = (SAFE_H - tagH) * 0.7 / PEAK;
+  if (LOGO) {
+    const img = $('logo');
+    const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    let h = Math.min(30 * VMIN, maxH), w = h * ar;
+    if (w > maxW) { w = maxW; h = w / ar; }
+    img.style.width = w + 'px'; img.style.height = h + 'px';
+  } else {
+    const word = $('word');
+    word.style.fontSize = 16 * VMIN + 'px';
+    const k = Math.min(1, maxW / word.offsetWidth, maxH / word.offsetHeight);
+    word.style.fontSize = 16 * VMIN * k + 'px';
+  }
+  // The tagline shrinks only when it is wider than title-safe.
+  const tag = $('tag');
+  tag.style.fontSize = 4.6 * VMIN + 'px';
+  if (tag.offsetWidth > SAFE_W) tag.style.fontSize = 4.6 * VMIN * SAFE_W / tag.offsetWidth + 'px';
+}
+
+window.seek = t => {
+  fitMark();   // measured here, after fonts and the logo have loaded
+
+  // 1. The cut: accent bar slashes across, primary bar 0.06 s behind it.
+  const drawA = ease.outExpo(prog(t, 0, 0.3));
+  const drawP = ease.outExpo(prog(t, 0.06, 0.3));
+
+  // The cut runs through the mark's centre: the mark stage keeps the tagline's height below it.
+  const tagH = $('tag').offsetHeight + 3.6 * VMIN;
+  const cx = W / 2, cy = (H - tagH) / 2, L = LEN;
+  $('markStage').style.paddingBottom = tagH + 'px';
+  $('tagStage').style.paddingTop = $('mark').offsetHeight + 'px';
+
+  // 2. The mask opens from the cut line in two beats: the band parts to the mark's height with
+  //    the bars riding its edges, then the bars clear off frame and the band opens fully.
+  const markR = Math.hypot($('mark').offsetWidth * NX, $('mark').offsetHeight * NY) / 2 * PEAK + 2 * VMIN;
+  const part = ease.outCubic(prog(t, OPEN, 0.4));
+  const clear = ease.inCubic(prog(t, 0.78, 0.4));
+  const half = markR * part + (Math.hypot(W, H) - markR) * clear;
+  const thin = 1 - ease.inCubic(prog(t, 0.82, 0.36));
+  placeBar($('barA'), TH_A * thin, -(half + TH_A * thin / 2), drawA, 0);
+  placeBar($('barP'), TH_P * thin, half + TH_P * thin / 2, drawP, 0);
+  function placeBar(el, th, off, drawn, gone) {
+    // Bar centred on the cut line through (cx, cy), pushed `off` px across it.
+    const bx = cx + NX * off, by = cy + NY * off;
+    el.style.width = LEN + 'px';
+    el.style.height = th + 'px';
+    el.style.transform = `translate(${bx - LEN / 2}px, ${by - th / 2}px) rotate(${ANGLE}rad)`;
+    el.style.clipPath = `inset(0 ${(1 - drawn) * 100}% 0 ${gone * 100}%)`;
+  }
+
+  // Band of half-width `half` around the cut line, in frame pixels.
+  const pts = [[-L, -half], [L, -half], [L, half], [-L, half]]
+    .map(([a, b]) => `${cx + DX * a + NX * b}px ${cy + DY * a + NY * b}px`);
+  $('reveal').style.clipPath = `polygon(${pts.join(',')})`;
+
+  // 3. The mark settles with weight.
+  const s = spring(t, OPEN, PEAK, 1, { stiffness: 10, damping: 0.7 });
+  $('mark').style.transform = `scale(${s})`;
+
+  // 4. Tagline writes on letter by letter.
+  const per = Math.min(0.03, 0.6 / Math.max(1, letters.length));   // whole line written by about 2.1 s
+  letters.forEach((el, i) => {
+    const p = prog(t, TAG + i * per, 0.12);
+    el.style.opacity = p > 0 ? Math.min(1, p * 3) : 0;
+    el.style.transform = `translateY(${(1 - ease.outCubic(p)) * 0.35}em)`;
+  });
+};
+</script>
+</body></html>

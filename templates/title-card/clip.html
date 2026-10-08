@@ -1,0 +1,142 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* brand */
+:root{--brand:"";--bg:#111;--fg:#fff;--primary:#555;--accent:#aaa;--font-display:sans-serif;--font-body:sans-serif;--logo-src:""}
+/* /brand */
+html,body{margin:0;overflow:hidden}
+body{background:var(--bg)}
+/* Title card: a primary block wipes in from the left edge, the headline words rise through their masks on it,
+   then an accent rule grows and the subtitle rises under it. */
+.group{position:absolute;left:8vw;top:50%;transform:translateY(-50%)}
+.block{position:absolute;left:-8vw;background:var(--primary)}
+.head{position:relative;font:400 13vw/0.98 var(--font-display);text-wrap:balance;letter-spacing:-0.01em}
+/* Mask padding covers the font's ascent and descent; the negative margin keeps the lines tight. */
+.w{display:inline-block;vertical-align:top;overflow:hidden;padding:0.12em 0 0.16em;margin:-0.12em 0 -0.16em}
+.w span{display:inline-block;width:max-content}
+.sub{position:relative;display:flex;align-items:center;gap:1.6vmin}
+.rule{height:0.7vmin;width:7vmin;background:var(--accent);transform-origin:0 50%}
+.subMask{overflow:hidden;padding:0.15em 0 0.2em;font:600 4.2vmin/1 var(--font-body)}
+.subText{display:inline-block;width:max-content;color:var(--fg);white-space:nowrap}
+@media (orientation: portrait){
+  .group{left:8vw;top:45%}
+  .block{left:-8vw}
+  .head{font-size:15vw;line-height:0.94}
+  .subMask{font-size:3.6vmin}
+}
+</style></head>
+<body>
+<div class="group" id="group">
+  <div class="block" id="block"></div>
+  <div class="head" id="head"></div>
+  <div class="sub" id="sub">
+    <div class="rule" id="rule"></div>
+    <div class="subMask"><span class="subText" id="subText"></span></div>
+  </div>
+</div>
+<script>
+const DATA = MG.clip(
+  { width: 1920, height: 1080, fps: 25, duration: 4, alpha: false },
+  { title: 'Jij bepaalt de richting', subtitle: 'Productowner.nl' }
+);
+const $ = id => document.getElementById(id);
+const { prog, ease, spring, clamp } = MG;
+const D = CLIP.duration, OUT = D - 0.5;   // exit takes the last 0.5s
+
+const words = DATA.title.split(/\s+/).filter(Boolean);
+$('head').innerHTML = '';
+const inner = words.map((w, i) => {
+  const mask = document.createElement('span');
+  mask.className = 'w';
+  const s = document.createElement('span');
+  s.textContent = w;
+  mask.appendChild(s);
+  $('head').appendChild(mask);
+  if (i < words.length - 1) $('head').appendChild(document.createTextNode(' '));
+  return s;
+});
+$('subText').textContent = DATA.subtitle;
+
+// Headline color: whichever of fg and bg reads better on primary (WCAG contrast).
+// With the example kit fg on primary is about 2.5:1, so the headline turns bg.
+const lum = hex => {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = [...h].map(c => c + c).join('');
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map(c => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const P = MG.brandVar('--primary');
+$('head').style.color = contrast(MG.brandVar('--fg'), P) >= contrast(MG.brandVar('--bg'), P) ? 'var(--fg)' : 'var(--bg)';
+
+// Timing.
+const W0 = 0.3, STAGGER = 0.06;                  // first word starts as the block is mostly in
+const lastIn = W0 + STAGGER * (words.length - 1);
+const SUB = lastIn + 0.4;                        // subtitle after the words land
+
+// Fit: start from the CSS size, shrink until the headline is at most three lines and,
+// with the subtitle, stays inside title-safe. Runs every seek from the same start, so it is deterministic.
+const head = $('head');
+function fit() {
+  const vw = innerWidth, vh = innerHeight;
+  const left = $('group').offsetLeft;
+  const maxW = vw * 0.95 - left - vw * 0.02;    // title-safe right edge, with a little air
+  const maxH = vh * 0.84;
+  head.style.width = maxW + 'px';
+  // Base size read here, not at script start: the renderer sizes the viewport after the script runs.
+  head.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(head).fontSize);
+  for (let i = 0; i < 40; i++) {
+    head.style.fontSize = size + 'px';
+    const masks = [...head.children];
+    const lines = new Set(masks.map(m => m.offsetTop)).size;
+    const widest = Math.max(...masks.map(m => m.offsetWidth));
+    const h = $('group').offsetHeight;
+    if (lines <= 3 && widest <= maxW && h <= maxH) break;
+    size *= 0.95;
+  }
+  // Text width: the furthest right edge of any word.
+  const textW = Math.max(...[...head.children].map(m => m.offsetLeft + m.offsetWidth));
+  return { size, textW, headH: head.offsetHeight };
+}
+
+window.seek = t => {
+  const { size, textW, headH } = fit();
+  $('sub').style.marginTop = size * 0.42 + 'px';
+
+  // Block: behind the headline from the frame's left edge to past the last letter.
+  const padX = size * 0.45, padY = size * 0.16;
+  const left = $('group').offsetLeft;
+  const b = $('block').style;
+  b.top = -padY + 'px';
+  b.height = headH + 2 * padY + 'px';
+  b.width = left + textW + padX + 'px';
+  // In: wipe from the left. Out: the left edge follows to the right, last thing on screen.
+  const bIn = ease.outExpo(prog(t, 0, 0.65));
+  const bOut = ease.inExpo(prog(t, OUT + 0.18, 0.28));
+  b.clipPath = `inset(0 ${(1 - bIn) * 100}% 0 ${bOut * 100}%)`;
+
+  // Words rise through their masks with a heavy spring; on exit they leave upward, last word first.
+  inner.forEach((s, i) => {
+    const t0 = W0 + i * STAGGER;
+    const up = spring(t, t0, 1, 0, { stiffness: 11, damping: 0.8 });
+    const out = ease.inCubic(prog(t, OUT + 0.04 + (words.length - 1 - i) * 0.025, 0.24));
+    s.style.transform = `translateY(${(up - out) * 140}%)`;
+    // Hidden while it waits below its mask or after it has left above it.
+    s.style.visibility = t > t0 && out < 1 ? 'visible' : 'hidden';
+    // On exit, clip at about cap height so a word leaving line 2 never draws over line 1.
+    s.parentElement.style.clipPath = out > 0 ? 'inset(0.24em 0 0 0)' : 'none';
+  });
+
+  // Accent rule grows, subtitle rises 0.1s later. Both came in last, so they leave first.
+  const rIn = ease.outExpo(prog(t, SUB, 0.5));
+  const rOut = ease.inCubic(prog(t, OUT, 0.2));
+  $('rule').style.transform = `scaleX(${rIn * (1 - rOut)})`;
+  const sIn = ease.outCubic(prog(t, SUB + 0.1, 0.5));
+  const sOut = ease.inCubic(prog(t, OUT, 0.2));
+  $('subText').style.transform = `translateY(${((1 - sIn) + sOut) * 150}%)`;
+  $('subText').style.visibility = sIn > 0 && sOut < 1 ? 'visible' : 'hidden';
+};
+</script>
+</body></html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* brand */
+:root{--brand:"";--bg:#111;--fg:#fff;--primary:#555;--accent:#aaa;--font-display:sans-serif;--font-body:sans-serif;--logo-src:""}
+/* /brand */
+html,body{margin:0;overflow:hidden;background:transparent}
+/* Callout: a ring draws on around the target and pulses once, a leader line runs out of it,
+   the label opens from the line's end. Leaves in reverse order. */
+svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
+.ink{fill:none;stroke:var(--accent);stroke-linecap:butt}
+.mask{position:absolute;left:0;top:0;overflow:hidden}
+.label{position:absolute;top:0;width:max-content;background:var(--bg);color:var(--fg);font:600 4.4vmin/1 var(--font-body);padding:1.8vmin 2.8vmin 1.6vmin;white-space:nowrap}
+.label span{display:inline-block}
+</style></head>
+<body>
+<svg id="svg">
+  <circle class="ink" id="pulse" pathLength="1"></circle>
+  <circle class="ink" id="ring" pathLength="1" stroke-dasharray="1 1"></circle>
+  <line class="ink" id="lead" pathLength="1" stroke-dasharray="1 1"></line>
+</svg>
+<div class="mask" id="mask"><div class="label" id="label"><span id="text"></span></div></div>
+<script>
+const DATA = MG.clip(
+  { width: 1920, height: 1080, fps: 25, duration: 4, alpha: true },
+  { label: 'New drop', x: 0.62, y: 0.4 }   // x, y: the target point as fractions of the frame
+);
+const $ = id => document.getElementById(id);
+$('text').textContent = DATA.label;
+const { prog, ease, spring, clamp } = MG;
+
+const W = CLIP.width, H = CLIP.height, VMIN = Math.min(W, H) / 100, D = CLIP.duration;
+$('svg').setAttribute('viewBox', `0 0 ${W} ${H}`);
+const TX = clamp(Number(DATA.x)) * W, TY = clamp(Number(DATA.y)) * H;
+// The label goes where there is more room: right of the target when it sits left of centre, above when low.
+const SX = Number(DATA.x) < 0.5 ? 1 : -1, SY = Number(DATA.y) > 0.5 ? -1 : 1;
+const R = 6 * VMIN;                                    // ring radius
+const SAFE = { l: W * 0.05, t: H * 0.05, r: W * 0.95, b: H * 0.95 };
+const OUT = D - 0.5;                                   // exit window: the last 0.5 s
+
+for (const id of ['ring', 'pulse']) { $(id).setAttribute('cx', TX); $(id).setAttribute('cy', TY); }
+$('ring').style.strokeWidth = 0.7 * VMIN + 'px';
+$('lead').style.strokeWidth = 0.45 * VMIN + 'px';
+$('pulse').style.strokeWidth = 0.35 * VMIN + 'px';
+
+window.seek = t => {
+  // Label size, measured here (fonts are loaded) on a width:max-content panel.
+  const lw = $('label').offsetWidth, lh = $('label').offsetHeight;
+
+  // Label box: diagonal out from the target on the roomy side, then clamped inside title-safe.
+  const gapX = R + 9 * VMIN, gapY = R + 6 * VMIN;
+  let lx = SX > 0 ? TX + gapX : TX - gapX - lw;
+  let ly = TY + SY * gapY - lh / 2;
+  lx = clamp(lx, SAFE.l, SAFE.r - lw);
+  ly = clamp(ly, SAFE.t, SAFE.b - lh);
+  // The line meets the middle of the label's near edge.
+  const ex = SX > 0 ? lx : lx + lw, ey = ly + lh / 2;
+  const ang = Math.atan2(ey - TY, ex - TX);
+  const sx = TX + Math.cos(ang) * R, sy = TY + Math.sin(ang) * R;
+
+  // Ring: draws on from the point that faces the label, so it hands off to the line.
+  const ringIn = ease.inOutCubic(prog(t, 0, 0.5));
+  const ringOut = ease.inCubic(prog(t, OUT + 0.2, 0.3));
+  const ring = $('ring');
+  ring.setAttribute('r', R);
+  ring.setAttribute('transform', `rotate(${ang * 180 / Math.PI} ${TX} ${TY})`);
+  ring.style.strokeDashoffset = 1 - ringIn * (1 - ringOut);
+
+  // One outward pulse as the ring closes. Small secondary detail, so it may fade.
+  const pp = prog(t, 0.4, 0.6);
+  const pulse = $('pulse');
+  pulse.setAttribute('r', R * (1 + 0.7 * ease.outCubic(pp)));
+  pulse.style.opacity = pp > 0 && pp < 1 ? 0.9 * (1 - pp) : 0;
+
+  // Leader line: from the ring toward the label, retracts toward the ring on the way out.
+  const lineIn = ease.outCubic(prog(t, 0.4, 0.4));
+  const lineOut = ease.inCubic(prog(t, OUT + 0.1, 0.24));
+  const lead = $('lead');
+  lead.setAttribute('x1', sx); lead.setAttribute('y1', sy);
+  lead.setAttribute('x2', ex); lead.setAttribute('y2', ey);
+  lead.style.strokeDashoffset = 1 - lineIn * (1 - lineOut);
+
+  // Label: a mask opens from the line's end with a small spring; it is the first to leave.
+  const lOpen = clamp(spring(t, 0.7, 0, 1, { stiffness: 16, damping: 0.65 }), 0, 1);
+  const lOut = ease.inCubic(prog(t, OUT, 0.24));
+  const mw = lw * lOpen * (1 - lOut);
+  const mask = $('mask');
+  mask.style.width = mw + 'px';
+  mask.style.height = lh + 'px';
+  mask.style.transform = `translate(${SX > 0 ? lx : lx + lw - mw}px, ${ly}px)`;
+  const label = $('label');
+  label.style.left = SX > 0 ? '0' : 'auto';
+  label.style.right = SX > 0 ? 'auto' : '0';
+  // Text trails the mask a little, sliding in from the line's side.
+  $('text').style.transform = `translateX(${(1 - ease.outCubic(prog(t, 0.75, 0.5))) * -SX * 0.6}em)`;
+};
+</script>
+</body></html>

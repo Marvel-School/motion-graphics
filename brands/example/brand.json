@@ -1,0 +1,10 @@
+{
+  "name": "Example",
+  "colors": { "bg": "#102A2A", "fg": "#EDEFE6", "primary": "#3FA796", "accent": "#F2C14E" },
+  "fonts": [
+    { "role": "display", "family": "Archivo Black", "weights": [400] },
+    { "role": "body", "family": "Work Sans", "weights": [400, 600] }
+  ],
+  "logo": null,
+  "rules": ["Neutral kit for testing the starter clips. Not a client."]
+}

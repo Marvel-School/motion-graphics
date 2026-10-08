@@ -1,0 +1,57 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* brand */
+:root{--brand:"";--bg:#111;--fg:#fff;--primary:#555;--accent:#aaa;--font-display:sans-serif;--font-body:sans-serif;--logo-src:""}
+/* /brand */
+html,body{margin:0;overflow:hidden;background:transparent}
+/* Lower third: an accent bar grows, the name panel opens from it, the role strip follows. */
+.lt{position:absolute;left:7.5vw;bottom:13vh;display:flex;align-items:stretch;gap:0.6vmin}
+.bar{width:0.9vmin;background:var(--accent);transform-origin:50% 100%}
+.stack{display:flex;flex-direction:column;align-items:flex-start}
+.mask{overflow:hidden}
+.name,.role{width:max-content}
+.name{background:var(--bg);color:var(--fg);font:400 6vmin/1 var(--font-display);padding:1.6vmin 2.4vmin 1.4vmin;white-space:nowrap}
+.role{background:var(--primary);color:var(--fg);font:600 2.8vmin/1 var(--font-body);padding:1vmin 2.4vmin;white-space:nowrap}
+.name span,.role span{display:inline-block}
+@media (orientation: portrait){ .lt{left:8vw;bottom:24vh} .name{font-size:6vmin} .role{font-size:3vmin} }
+</style></head>
+<body>
+<div class="lt">
+  <div class="bar" id="bar"></div>
+  <div class="stack">
+    <div class="mask" id="nameMask"><div class="name"><span id="name"></span></div></div>
+    <div class="mask" id="roleMask"><div class="role"><span id="role"></span></div></div>
+  </div>
+</div>
+<script>
+const DATA = MG.clip(
+  { width: 1920, height: 1080, fps: 25, duration: 6, alpha: true },
+  { name: 'Jan de Vries', role: 'Product owner' }
+);
+const $ = id => document.getElementById(id);
+$('name').textContent = DATA.name;
+$('role').textContent = DATA.role;
+const D = CLIP.duration, OUT = D - 0.7;   // exit starts 0.7s before the end
+const { prog, ease, spring, clamp } = MG;
+
+window.seek = t => {
+  // Panel widths, measured here and not at script start: fonts are loaded by now.
+  // Panels are width:max-content, so the measurement doesn't depend on the mask's last width.
+  const nameW = $('name').parentElement.offsetWidth, roleW = $('role').parentElement.offsetWidth;
+  const outP = ease.inCubic(prog(t, OUT, 0.45));
+  // Accent bar: grows first, shrinks last.
+  const barIn = ease.outExpo(prog(t, 0, 0.35));
+  const barOut = ease.inCubic(prog(t, OUT + 0.3, 0.3));
+  $('bar').style.transform = `scaleY(${barIn * (1 - barOut)})`;
+  // Name panel opens from the bar with a little overshoot; text trails it.
+  const nOpen = clamp(spring(t, 0.15, 0, 1, { stiffness: 13, damping: 0.7 }), 0, 1.04);
+  $('nameMask').style.width = `${nameW * Math.min(1, nOpen) * (1 - outP)}px`;
+  $('name').style.transform = `translateX(${(1 - ease.outCubic(prog(t, 0.2, 0.6))) * -12}%)`;
+  // Role strip follows 0.3s later and leaves first.
+  const rOpen = ease.outExpo(prog(t, 0.45, 0.5));
+  const rOut = ease.inCubic(prog(t, OUT - 0.1, 0.35));
+  $('roleMask').style.width = `${roleW * rOpen * (1 - rOut)}px`;
+};
+</script>
+</body></html>
