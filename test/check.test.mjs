@@ -52,6 +52,18 @@ test('passes text that enters from off frame and settles inside title-safe', () 
   assert.equal(r.code, 0, r.out);
 });
 
+// Bug caught: a mask that opens too narrow holds a name cut off ("Jan de") for the whole clip.
+test('fails text held cut off by a mask, and names it', () => {
+  const clip = writeClip(tmpdir(), {
+    spec,
+    css: '#m{position:absolute;top:150px;left:100px;width:120px;overflow:hidden}#t{color:#fff;font:bold 40px monospace;white-space:nowrap}',
+    body: '<div id="m"><div id="t">Jan de Vries</div></div>',
+  });
+  const r = check(clip);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /cut off.*Jan de Vries/);
+});
+
 // Bug caught: an intentional full-bleed headline fails the check and Claude shrinks it.
 test('passes text marked data-bleed', () => {
   const clip = writeClip(tmpdir(), {

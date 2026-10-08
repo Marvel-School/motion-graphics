@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Checks a clip before it is rendered. Prints one "ok" line, or one FAIL line per problem and exits 1.
 //   node scripts/check.mjs <clip.html>
-// Checks: determinism, text inside title-safe, fonts loaded from files, alpha or background as declared.
+// Checks: determinism, text inside title-safe, text cut off by a mask, fonts loaded from files,
+// alpha or background as declared.
 import path from 'node:path';
 import { launch, openClip, frameCount, frameTime } from './page.mjs';
 
 const SAFE = 0.05;      // title-safe margin on each side, as a fraction of the frame
 const HOLD = 0.5;       // seconds text may sit outside title-safe while moving in or out
+const CUT_HOLD = 0.8;   // seconds text may be partly hidden by a mask during a reveal or exit
 const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'system-ui', 'cursive', 'fantasy', 'ui-sans-serif', 'ui-serif', 'ui-monospace']);
 
 // Runs in the page: every visible text run with its visible box.
@@ -36,7 +38,9 @@ function measureText() {
     }
     if (box.r - box.l < 1 || box.b - box.t < 1) continue;
     const family = getComputedStyle(el).fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '');
-    out.push({ text: text.slice(0, 40), family, ...box });
+    // Cut off: a mask hides part of the text (not the frame edge, which title-safe covers).
+    const cut = (box.r - box.l) < (r.right - r.left) - 2 || (box.b - box.t) < (r.bottom - r.top) - 2;
+    out.push({ text: text.slice(0, 40), family, cut, ...box });
   }
   return out;
 }
@@ -96,23 +100,33 @@ async function main() {
     for (const f of new Set(broken)) fails.push(`font: "${f}" failed to load. Check the @font-face src path.`);
     const loadedSet = new Set(loaded);
 
-    // Walk every frame: text boxes, families, title-safe runs.
-    const runs = new Map();      // text -> { start, worst }
+    // Walk every frame. A problem only fails once it lasts longer than its hold limit,
+    // so text passing an edge or a mask on its way in or out is fine.
+    const LIMITS = { safe: HOLD, cut: CUT_HOLD };
+    const runs = new Map();      // "kind\0text" -> { start, detail }
     const reported = new Set();
     const families = new Set();
     const flush = (key, end) => {
       const r = runs.get(key);
       runs.delete(key);
-      if (r && end - r.start > HOLD && !reported.has(key)) {
-        reported.add(key);
-        fails.push(`title-safe: "${key}" sits outside title-safe from ${r.start.toFixed(2)}s to ${end.toFixed(2)}s (${r.worst}). Move it in, or mark the element data-bleed if the bleed is intended.`);
-      }
+      const [kind, text] = key.split('\0');
+      if (!r || end - r.start <= LIMITS[kind] || reported.has(key)) return;
+      reported.add(key);
+      const span = `from ${r.start.toFixed(2)}s to ${end.toFixed(2)}s`;
+      fails.push(kind === 'safe'
+        ? `title-safe: "${text}" sits outside title-safe ${span} (${r.detail}). Move it in, or mark the element data-bleed if the bleed is intended.`
+        : `cut off: "${text}" is partly hidden by a mask ${span}. The mask is narrower than the text; measure the text after fonts load (inside seek), not at script start.`);
     };
     for (let i = 0; i < frames; i++) {
       const t = frameTime(clip, i);
       await seek(t);
       const boxes = await page.evaluate(measureText);
-      const out = new Set();
+      const live = new Set();
+      const open = (kind, text, detail) => {
+        const key = kind + '\0' + text;
+        live.add(key);
+        if (!runs.has(key)) runs.set(key, { start: t, detail });
+      };
       for (const b of boxes) {
         families.add(b.family);
         const edges = [];
@@ -121,12 +135,10 @@ async function main() {
         if (b.t < safe.t - 1) edges.push(`top at ${Math.round(b.t)}px, safe starts at ${Math.round(safe.t)}px`);
         if (b.b > safe.b + 1) edges.push(`bottom at ${Math.round(b.b)}px, safe ends at ${Math.round(safe.b)}px`);
         const onFrame = b.r > 0 && b.l < clip.width && b.b > 0 && b.t < clip.height;
-        if (edges.length && onFrame) {
-          out.add(b.text);
-          if (!runs.has(b.text)) runs.set(b.text, { start: t, worst: edges.join('; ') });
-        }
+        if (edges.length && onFrame) open('safe', b.text, edges.join('; '));
+        if (b.cut) open('cut', b.text, '');
       }
-      for (const key of [...runs.keys()]) if (!out.has(key)) flush(key, t);
+      for (const key of [...runs.keys()]) if (!live.has(key)) flush(key, t);
     }
     for (const key of [...runs.keys()]) flush(key, clip.duration);
 
