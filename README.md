@@ -13,7 +13,7 @@ bash scripts/package-bootstrap.sh <owner>/<repo>   # out/motion-graphics.zip, up
 bash scripts/promote.sh                            # from main: tests + starter checks, then main -> stable
 ```
 
-`promote.sh` pushes nothing if a test or a starter check fails. To roll back, point `stable` at the last good commit: `git push -f origin <sha>:stable`.
+`promote.sh` pushes nothing if a test or a starter check fails. `stable` refuses force pushes, so a rollback is a revert: `git revert <sha>` on a branch, merge it into `main`, then `promote.sh`.
 
 ## Layout
 
