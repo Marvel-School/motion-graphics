@@ -1,0 +1,14 @@
+{
+  "name": "motion-graphics",
+  "version": "0.1.0",
+  "description": "Motion graphics for Premiere Pro, rendered from HTML by Claude",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.64.0"
+  },
+  "private": true,
+  "type": "module"
+}
