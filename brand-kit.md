@@ -1,6 +1,6 @@
 # Setting up a brand kit
 
-Reached from intake when a client has no `brand-<slug>.json` in the Project. A kit is set up once per client and reused for every clip after.
+Reached from intake when a client has no `brand-<slug>.json` in his files (see "Where you run" in `SKILL-BODY.md`). A kit is set up once per client and reused for every clip after.
 
 ## 1. Gather
 
@@ -25,14 +25,14 @@ Extra brand colors go in as more keys; clips reach them as `--<name>`.
 ## 3. Fonts
 
 - A Google Fonts family: name it in `fonts` with the weights you need; the scripts fetch it.
-- A file he uploaded: add `"file": "font-<slug>-<weight>.otf"` and save the file to the Project under that name.
+- A file he uploaded: add `"file": "font-<slug>-<weight>.otf"` and save the file to his files under that name.
 - A paid font with no file: pick the closest Google Fonts family and tell him which one stands in, in one line.
 
 Roles: `display` for headlines and names, `body` for everything smaller. One family for both is fine.
 
 ## 4. Write and confirm
 
-Project files sit side by side, so every file of the kit carries the slug in its name:
+His files sit side by side, so every file of the kit carries the slug in its name:
 
 ```json
 {
@@ -49,6 +49,6 @@ Project files sit side by side, so every file of the kit carries the slug in its
 
 Build the lower-third starter with the kit and send its stills sheet: "This is how your brand will look." Adjust until he approves.
 
-Save `brand-<slug>.json`, the logo and any font files to the Project. If you can't write to the Project, send him the files and ask him to add them to the Project's files, in one line.
+Save `brand-<slug>.json`, the logo and any font files to his files. In the Claude app, if you can't write to the Project, send him the files and ask him to add them to the Project's files, in one line.
 
-Done when the kit's files are in the Project and he approved the sample sheet. Then go back to intake.
+Done when the kit's files are in his files and he approved the sample sheet. Then go back to intake.

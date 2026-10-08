@@ -6,7 +6,7 @@ Clips are HTML pages. `scripts/render.mjs` opens one in headless Chromium, seeks
 
 ## How the user gets updates
 
-He uploads a small bootstrap skill once (`bootstrap/SKILL.md`, packaged with the repo URL filled in). Every conversation it clones the `stable` branch of this repo and follows `SKILL-BODY.md`. Moving `stable` updates him; he does nothing.
+He installs a small bootstrap skill once (`bootstrap/SKILL.md` with the repo URL filled in): uploaded as a ZIP in the Claude app, or saved as `~/.claude/skills/motion-graphics/SKILL.md` for Claude Code. Every conversation it clones the `stable` branch of this repo and follows `SKILL-BODY.md`. Moving `stable` updates him; he does nothing.
 
 ```bash
 bash scripts/package-bootstrap.sh <owner>/<repo>   # out/motion-graphics.zip, upload once in Customize > Skills
@@ -25,7 +25,7 @@ bash scripts/promote.sh                            # from main: tests + starter 
 | `templates/` | Seven starter clips: lower-third, title-card, logo-sting, kinetic-text, callout, glitch-hit, wipe-transition |
 | `lib/mg.js` | Injected into every clip: `MG.clip`, easing, springs, seeded random |
 | `scripts/` | render, check, apply-brand, font, colors, setup, promote, package-bootstrap |
-| `brands/example/` | A neutral kit for testing the starters. Client kits live in his Claude Project, never here |
+| `brands/example/` | A neutral kit for testing the starters. Client kits live with him (his Claude Project, or `~/motion-graphics/brands/` for Claude Code), never here |
 
 ## Development
 
@@ -37,4 +37,4 @@ bash scripts/check-starters.sh # every starter, landscape and portrait, with the
 
 ## Lessons
 
-When a job goes wrong in a way `craft.md` doesn't cover, Claude writes a line to `lessons.md` in his Project. Read those now and then and turn the useful ones into `craft.md` rules.
+When a job goes wrong in a way `craft.md` doesn't cover, Claude writes a line to `lessons.md` in his Project (or `~/motion-graphics/` for Claude Code) and, where you can't read that, asks him to forward it. Read those now and then and turn the useful ones into `craft.md` rules.
