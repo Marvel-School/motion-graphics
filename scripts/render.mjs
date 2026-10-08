@@ -71,10 +71,11 @@ async function renderVideo(browser, file, out, data, preview) {
   const code = await done;
   await page.close();
   if (code !== 0) throw new Error(`ffmpeg failed for ${out}: ${ffErr.trim()}`);
-  const mb = (fs.statSync(out).size / 1e6).toFixed(1);
+  const bytes = fs.statSync(out).size;
+  const mb = bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : `${(bytes / 1e6).toFixed(1)} MB`;
   const kind = preview ? 'H.264 preview' : clip.alpha ? 'ProRes 4444 + alpha' : 'ProRes 422 HQ';
   const size = preview ? `${Math.floor(clip.width / 4) * 2}x${Math.floor(clip.height / 4) * 2}` : `${clip.width}x${clip.height}`;
-  console.log(`${path.basename(out)}  ${size} ${clip.fps}fps ${frames} frames  ${kind}  ${mb} MB`);
+  console.log(`${path.basename(out)}  ${size} ${clip.fps}fps ${frames} frames  ${kind}  ${mb}`);
 }
 
 async function renderStills(browser, file, out, times) {

@@ -32,7 +32,7 @@ Done when you know type, text, shape, frame rate and brand kit, and have the scr
 
 ## 2. Build
 
-1. Make a job folder and copy the starter in: `J=$HOME/motion-jobs/<yyyy-mm-dd>-<client>-<type>`, `cp -r $MG/templates/<type> $J`.
+1. Make a job folder and copy the starter in: `J=$HOME/motion-jobs/<yyyy-mm-dd>-<client>-<type>`, then `mkdir -p $HOME/motion-jobs && cp -r $MG/templates/<type> $J`.
 2. Gather the brand kit into `$J/brand/`: the `brand-<slug>.json` saved as `brand.json`, plus every file it names (logo, font files). Then `node $MG/scripts/apply-brand.mjs $J/brand $J`.
 3. Edit `$J/clip.html`: put his text in the `defaults`, set `width`, `height` and `fps` in `MG.clip`, and change the clip as his request needs. For a callout, set `x` and `y` from the screenshot as fractions of the frame.
 4. `node $MG/scripts/check.mjs $J/clip.html`. Fix every `FAIL` line and run it again.
