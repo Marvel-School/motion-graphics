@@ -6,6 +6,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -25,7 +26,8 @@ export function fromFontsource(family, weights, dir) {
   const pkgDir = path.join(ROOT, 'node_modules', pkg);
   // A package without files/ is a half-finished install (two installs at once); install again.
   if (!fs.existsSync(path.join(pkgDir, 'files'))) {
-    const r = spawnSync('npm', ['install', '--no-save', '--silent', pkg], { cwd: ROOT, encoding: 'utf8' });
+    // On Windows npm is npm.cmd, which Node only starts through a shell.
+    const r = spawnSync('npm', ['install', '--no-save', '--silent', pkg], { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
     if (r.status !== 0) throw new Error(`"${family}" is not on npm as ${pkg}. Ask the user for the font file and use --file.`);
   }
   const css = [];
@@ -56,6 +58,6 @@ function main() {
   console.log(css.join('\n'));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try { main(); } catch (e) { console.error(e.message); process.exit(1); }
 }

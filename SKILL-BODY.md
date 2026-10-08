@@ -14,6 +14,7 @@ Read `craft.md` before writing or changing any clip. It holds the clip contract 
 
 - **Claude app** (`Linux`): his files are the files of the Project this chat is in. Send a file by attaching it to your reply.
 - **Claude Code on his Mac** (`Darwin`): his files are in `~/motion-graphics/`: brand kits in `brands/`, `lessons.md` next to it. Send a file with `open <file>`, which shows it in Preview or QuickTime. Copy final renders to `~/Movies/Motion graphics/` and `open` that folder, so he can drag them from Finder. He may be asked to approve a command; that is not asking him to run it.
+- **Claude Code on Windows** (`MINGW` or `MSYS`): the same as on a Mac, except: send a file with `start "" "$(cygpath -w <file>)"`, and copy final renders to `~/Videos/Motion graphics/`.
 
 ## Keep it light
 
