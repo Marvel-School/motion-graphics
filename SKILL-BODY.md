@@ -13,7 +13,7 @@ Read `craft.md` before writing or changing any clip. It holds the clip contract 
 `uname` tells you. The rest of this file says "his files" and "send"; here is what they mean.
 
 - **Claude app** (`Linux`): his files are the files of the Project this chat is in. Send a file by attaching it to your reply.
-- **Claude Code on his Mac** (`Darwin`): his files are in `~/motion-graphics/`: brand kits in `brands/`, `lessons.md` next to it. Send a file with `open <file>`, which shows it in Preview or QuickTime. Copy final renders to `~/Movies/Motion graphics/` and `open` that folder, so he can drag them from Finder. He may be asked to approve a command; that is not asking him to run it.
+- **Claude Code on his Mac** (`Darwin`): his files are in `~/motion-graphics/`: brand kits in `brands/`, saved designs in `templates/`, `lessons.md` and `jobs.log` next to them. Send a file with `open <file>`, which shows it in Preview or QuickTime. Copy final renders to `~/Movies/Motion graphics/` and `open` that folder, so he can drag them from Finder. He may be asked to approve a command; that is not asking him to run it.
 - **Claude Code on Windows** (`MINGW` or `MSYS`): the same as on a Mac, except: send a file with `start "" "$(cygpath -w <file>)"`, and copy final renders to `~/Videos/Motion graphics/`.
 
 ## Keep it light
@@ -40,7 +40,7 @@ Done when you know type, text, shape, frame rate and brand kit, and have the scr
 
 ## 2. Build
 
-1. Make a job folder and copy the starter in: `J=$HOME/motion-jobs/<yyyy-mm-dd>-<client>-<type>`, then `mkdir -p $HOME/motion-jobs && cp -r $MG/templates/<type> $J`.
+1. Make a job folder and copy the starter in: `J=$HOME/motion-jobs/<yyyy-mm-dd>-<client>-<type>`, then `mkdir -p $HOME/motion-jobs && cp -r $MG/templates/<type> $J && date +%s > $J/started`.
 2. Gather the brand kit into `$J/brand/`: the `brand-<slug>.json` saved as `brand.json`, plus every file it names (logo, font files). Then `node $MG/scripts/apply-brand.mjs $J/brand $J`.
 3. Edit `$J/clip.html`: put his text in the `defaults`, set `width`, `height` and `fps` in `MG.clip`, and change the clip as his request needs. For a callout, set `x` and `y` from the screenshot as fractions of the frame.
 4. `node $MG/scripts/check.mjs $J/clip.html`. Fix every `FAIL` line and run it again.
@@ -71,7 +71,15 @@ Render to a name that says what the file is:
 
 For a wipe or other overlay transition, add `_cut-at-f<frame>`, where frame is `round(CUT * fps)`.
 
-`node $MG/scripts/render.mjs $J/clip.html --out $J/<name>.mov`. For a list of versions, write the rows to `$J/rows.json` (one object per version, same keys as the defaults) and add `--data $J/rows.json`; you get one file per row.
+In Claude Code, first save the approved design so he can fill it again later, from Premiere:
+
+1. `node $MG/scripts/save-template.mjs $J <client> <type>`, with the brand kit's slug as client and the starter's name as type.
+2. If it says the template already exists, ask him in one line: replace the saved one, or keep it and save this one under another name (e.g. `lower-third-dark`). Replace: run it again with `--replace`. Keep: run it with the new type name.
+3. Render from the saved template, not from `$J`, so the file records where it came from: `T=$HOME/motion-graphics/templates/<client>/<type>`, then `node $MG/scripts/render.mjs $T/clip.html --out $J/<name>.mov`.
+
+In the Claude app, skip the template and render from `$J/clip.html`.
+
+For a list of versions, write the rows to `$J/rows.json` (one object per version, same keys as the defaults) and add `--data $J/rows.json`; you get one file per row.
 
 Send every file. Then tell him in two or three lines how to use it in Premiere:
 
@@ -82,6 +90,20 @@ Send every file. Then tell him in two or three lines how to use it in Premiere:
 
 Done when every file is sent and he has the placement line.
 
-## 6. Lessons
+## 6. Job log
+
+In Claude Code, once the final is sent, add one line about this job to `~/motion-graphics/jobs.log`. Marvel reads it with him to see what costs time:
+
+```bash
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" <client> <type> $(( ($(date +%s) - $(cat $J/started)) / 60 )) <messages> <renders> "<premiere issues>" >> $HOME/motion-graphics/jobs.log
+```
+
+- `<messages>`: how many messages he sent in this conversation.
+- `<renders>`: how many final `.mov` renders this job took, re-renders included.
+- `<premiere issues>`: what he reported going wrong in Premiere, in a few words, or `-`.
+
+If he reports a Premiere problem later in the same conversation, add one more line for the job with renders `0` and that issue.
+
+## 7. Lessons
 
 When something went wrong that `craft.md` doesn't cover (a check passed but the clip looked wrong, Premiere misbehaved, he asked for a change you should have seen coming), write one line about it to `lessons.md` in his files: the date, what happened, and the rule that would have prevented it. In Claude Code, or if you can't write it there, also put the line at the end of your last message and ask him to forward it to Marvel. Marvel turns lessons into `craft.md` rules.
