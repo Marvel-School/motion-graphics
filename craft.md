@@ -1,6 +1,6 @@
 # Craft
 
-Rules for writing clips. Each one came from a clip that went wrong. Follow them unless the user asks otherwise; if one turns out wrong, write it up as a lesson (`SKILL-BODY.md`, section 6).
+Rules for writing clips. Each one came from a clip that went wrong. Follow them unless the user asks otherwise; if one turns out wrong, write it up as a lesson (`SKILL-BODY.md`, section 7).
 
 ## The clip contract
 

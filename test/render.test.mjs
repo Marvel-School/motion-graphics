@@ -89,6 +89,26 @@ test('batch renders one file per data row, each with its own content', () => {
   assert.equal(hashes.size, 3);
 });
 
+// Bug caught: the Premiere panel can't show or edit a clip's text because its sidecar is missing,
+// shared between batch files, or doesn't name the template it came from.
+test('each render from a saved template writes a sidecar with its template and its own row', () => {
+  const job = tmpdir();
+  writeClip(job, {
+    spec: { width: 320, height: 180, fps: 25, duration: 0.2, alpha: true },
+    defaults: { name: 'Default', role: 'Role' },
+  });
+  const root = tmpdir();
+  assert.equal(run('save-template.mjs', [job, 'acme', 'lower-third', '--root', root]).code, 0);
+  const out = tmpdir();
+  const rows = path.join(out, 'rows.json');
+  fs.writeFileSync(rows, JSON.stringify([{ name: 'Ayla', role: 'Host' }, { name: 'Sem', role: 'Guest' }]));
+  const r = run('render.mjs', [path.join(root, 'acme', 'lower-third', 'clip.html'), '--out', path.join(out, 'lt_v2.mov'), '--data', rows]);
+  assert.equal(r.code, 0, r.out);
+  const sidecar = f => JSON.parse(fs.readFileSync(path.join(out, f), 'utf8'));
+  assert.deepEqual(sidecar('lt_v2_01_ayla.mov.json'), { template: 'acme/lower-third', data: { name: 'Ayla', role: 'Host' }, version: 2 });
+  assert.deepEqual(sidecar('lt_v2_02_sem.mov.json'), { template: 'acme/lower-third', data: { name: 'Sem', role: 'Guest' }, version: 2 });
+});
+
 // Bug caught: a row missing a field renders the template's placeholder into a client deliverable.
 test('batch stops and names the row when a row lacks a field the defaults have', () => {
   const dir = tmpdir();

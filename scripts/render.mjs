@@ -52,6 +52,16 @@ function encoderArgs(clip, preview) {
   return [...input, ...scale, '-c:v', 'prores_ks', '-profile:v', '3', '-pix_fmt', 'yuv422p10le', '-vendor', 'apl0', ...color];
 }
 
+// <out>.json next to a final: which template and text made it, so the Premiere panel can edit it.
+// template is "<client>/<type>" when the clip sits in a folder saved by save-template.mjs, else null.
+function writeSidecar(file, out, data) {
+  const meta = path.join(path.dirname(path.resolve(file)), 'template.json');
+  const t = fs.existsSync(meta) ? JSON.parse(fs.readFileSync(meta, 'utf8')) : null;
+  const version = Number(/_v(\d+)(?=[_.])/.exec(path.basename(out))?.[1] ?? 1);
+  const sidecar = { template: t ? `${t.client}/${t.type}` : null, data, version };
+  fs.writeFileSync(out + '.json', JSON.stringify(sidecar, null, 2) + '\n');
+}
+
 async function renderVideo(browser, file, out, data, preview) {
   const { page, clip, seek } = await openClip(browser, file, data);
   if (preview && clip.alpha) {
@@ -71,6 +81,7 @@ async function renderVideo(browser, file, out, data, preview) {
   const code = await done;
   await page.close();
   if (code !== 0) throw new Error(`ffmpeg failed for ${out}: ${ffErr.trim()}`);
+  if (!preview) writeSidecar(file, out, { ...clip.defaults, ...data });
   const bytes = fs.statSync(out).size;
   const mb = bytes < 1e6 ? `${Math.round(bytes / 1e3)} KB` : `${(bytes / 1e6).toFixed(1)} MB`;
   const kind = preview ? 'H.264 preview' : clip.alpha ? 'ProRes 4444 + alpha' : 'ProRes 422 HQ';
