@@ -2,6 +2,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const MG_JS = fs.readFileSync(path.resolve(import.meta.dirname, '../lib/mg.js'), 'utf8');
 
@@ -33,7 +34,7 @@ export async function openClip(browser, file, data = null) {
   await page.addInitScript(`window.__MG_DATA__ = ${JSON.stringify(data)};\n${MG_JS}`);
   // The clip size is only known once its script has run. Load once to read it, then reload at
   // that size, so anything the script measures at start sees the real viewport.
-  await page.goto('file://' + path.resolve(file));
+  await page.goto(pathToFileURL(path.resolve(file)).href);
   const first = await page.evaluate(() => window.CLIP);
   if (first) {
     await page.setViewportSize({ width: first.width, height: first.height });

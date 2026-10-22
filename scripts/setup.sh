@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-command -v ffmpeg >/dev/null || { echo "ffmpeg is missing. On a Mac: brew install ffmpeg"; exit 1; }
+command -v ffmpeg >/dev/null || { echo "ffmpeg is missing. On a Mac: brew install ffmpeg. On Windows: winget install Gyan.FFmpeg, then restart Claude Code"; exit 1; }
 encoders="$(ffmpeg -hide_banner -encoders 2>/dev/null)"
 [[ "$encoders" == *prores_ks* ]] || { echo "this ffmpeg has no ProRes encoder (prores_ks)"; exit 1; }
 

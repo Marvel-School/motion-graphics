@@ -6,7 +6,7 @@ Clips are HTML pages. `scripts/render.mjs` opens one in headless Chromium, seeks
 
 ## How the user gets updates
 
-He installs a small bootstrap skill once (`bootstrap/SKILL.md` with the repo URL filled in): uploaded as a ZIP in the Claude app, or saved as `~/.claude/skills/motion-graphics/SKILL.md` for Claude Code. Every conversation it clones the `stable` branch of this repo and follows `SKILL-BODY.md`. Moving `stable` updates him; he does nothing.
+He installs a small bootstrap skill once (`bootstrap/SKILL.md` with the repo URL filled in): uploaded as a ZIP in the Claude app, or saved as `~/.claude/skills/motion-graphics/SKILL.md` for Claude Code (Mac or Windows). Every conversation it clones the `stable` branch of this repo and follows `SKILL-BODY.md`. Moving `stable` updates him; he does nothing.
 
 ```bash
 bash scripts/package-bootstrap.sh <owner>/<repo>   # out/motion-graphics.zip, upload once in Customize > Skills
